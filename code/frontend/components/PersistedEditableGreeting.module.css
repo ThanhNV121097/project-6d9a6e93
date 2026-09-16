@@ -1,7 +1,12 @@
 .section {
+  display: flex;
+  min-height: 100vh;
   width: 100%;
   max-width: 560px;
   margin: var(--space-0) auto;
+  padding: var(--space-page);
+  flex-direction: column;
+  justify-content: center;
   text-align: center;
 }
 
