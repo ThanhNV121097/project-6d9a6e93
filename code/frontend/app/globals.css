@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-bg: #FFFFFF;
+  --color-text: #000000;
+  --color-primary-action: #2563EB;
+  --space-0: 0;
+  --space-hairline-offset: -1px;
+  --space-hairline: 1px;
+  --space-focus-offset: 3px;
+  --space-control-y: 10px;
+  --space-control-x: 12px;
+  --space-form-gap: 12px;
+  --space-button-x: 20px;
+  --space-page-mobile: 20px;
+  --space-page: 24px;
+  --space-heading-gap: 32px;
+  --text-message: 16px;
+  --text-control: 18px;
+  --text-heading: clamp(44px, 10vw, 80px);
+  --font-weight-body: 400;
+  --font-weight-action: 700;
+  --font-weight-heading: 700;
+  --tracking-heading-tight: -0.04em;
+  --tracking-normal: normal;
+  --radius-control: 0;
+  --border-control: 2px;
+  --focus-outline-width: 3px;
+  --focus-outline-offset: 3px;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  margin: var(--space-0);
+  min-height: 100vh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: var(--font-weight-body);
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: inherit;
+  font-weight: var(--font-weight-heading);
+  letter-spacing: var(--tracking-heading-tight);
+}
