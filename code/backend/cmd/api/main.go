@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"sort"
@@ -11,8 +15,22 @@ import (
 	"time"
 
 	"github.com/ThanhNV121097/project-6d9a6e93/backend/migrations"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type greetingResponse struct {
+	Text string `json:"text"`
+}
+
+type errorResponse struct {
+	Error errorBody `json:"error"`
+}
+
+type errorBody struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
 
 func main() {
 	ctx := context.Background()
@@ -37,11 +55,34 @@ func main() {
 		probeCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 		if err := pool.Ping(probeCtx); err != nil {
-			http.Error(w, `{"error":{"code":"UNAVAILABLE","message":"Service unavailable."}}`, http.StatusServiceUnavailable)
+			writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "Service unavailable.")
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("GET /v1/greeting", func(w http.ResponseWriter, r *http.Request) {
+		text, err := getGreeting(r.Context(), pool)
+		if err != nil {
+			writeStoreError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, greetingResponse{Text: text})
+	})
+	mux.HandleFunc("PUT /v1/greeting", func(w http.ResponseWriter, r *http.Request) {
+		text, ok := decodeGreetingRequest(w, r)
+		if !ok {
+			return
+		}
+		if text == "" {
+			writeError(w, http.StatusUnprocessableEntity, "VALIDATION_FAILED", "Greeting must not be empty.")
+			return
+		}
+		saved, err := saveGreeting(r.Context(), pool, text)
+		if err != nil {
+			writeStoreError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, greetingResponse{Text: saved})
 	})
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -53,6 +94,68 @@ func main() {
 	server := &http.Server{Addr: ":" + port, Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	log.Printf("listening on :%s", port)
 	log.Fatal(server.ListenAndServe())
+}
+
+func getGreeting(ctx context.Context, pool *pgxpool.Pool) (string, error) {
+	var text string
+	err := pool.QueryRow(ctx, `SELECT text FROM greetings WHERE id = true`).Scan(&text)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = pool.QueryRow(ctx, `INSERT INTO greetings (id, text, updated_at) VALUES (true, 'Hello, World!', now()) ON CONFLICT (id) DO UPDATE SET text = greetings.text RETURNING text`).Scan(&text)
+	}
+	return text, err
+}
+
+func saveGreeting(ctx context.Context, pool *pgxpool.Pool, text string) (string, error) {
+	var saved string
+	err := pool.QueryRow(ctx, `UPDATE greetings SET text = $1, updated_at = now() WHERE id = true RETURNING text`, text).Scan(&saved)
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = pool.QueryRow(ctx, `INSERT INTO greetings (id, text, updated_at) VALUES (true, $1, now()) RETURNING text`, text).Scan(&saved)
+	}
+	return saved, err
+}
+
+func decodeGreetingRequest(w http.ResponseWriter, r *http.Request) (string, bool) {
+	defer r.Body.Close()
+	decoder := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := decoder.Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "MALFORMED_REQUEST", "Request body is malformed.")
+		return "", false
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		writeError(w, http.StatusBadRequest, "MALFORMED_REQUEST", "Request body is malformed.")
+		return "", false
+	}
+	return strings.TrimSpace(req.Text), true
+}
+
+func writeStoreError(w http.ResponseWriter, err error) {
+	if isUnavailable(err) {
+		writeError(w, http.StatusServiceUnavailable, "UNAVAILABLE", "Service unavailable.")
+		return
+	}
+	writeError(w, http.StatusInternalServerError, "INTERNAL", "Internal server error.")
+}
+
+func isUnavailable(err error) bool {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+func writeError(w http.ResponseWriter, status int, code string, message string) {
+	writeJSON(w, status, errorResponse{Error: errorBody{Code: code, Message: message}})
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(v)
 }
 
 func migrate(ctx context.Context, pool *pgxpool.Pool) error {
