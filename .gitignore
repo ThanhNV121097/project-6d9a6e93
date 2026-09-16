@@ -1,0 +1,11 @@
+# Local environment
+.env
+# Dependencies and build output
+node_modules/
+.next/
+dist/
+bin/
+# IDE files
+.idea/
+.vscode/
+*.swp
