@@ -21,6 +21,8 @@ Backend receives paths after deployment proxy strips `/api`. All paths below int
 
 Returns current shared greeting.
 
+Auth: none; public Visitor access.
+
 Response `200`:
 
 ```json
@@ -31,7 +33,9 @@ Errors: `500 INTERNAL`, `503 UNAVAILABLE`.
 
 ### `PUT /v1/greeting`
 
-Replaces shared greeting. Server trims leading and trailing whitespace before storing.
+Replaces shared greeting. Server trims leading and trailing whitespace before storing. Last completed save wins.
+
+Auth: none; public Visitor access.
 
 Request:
 
@@ -50,3 +54,7 @@ Errors: `400 MALFORMED_REQUEST`, `422 VALIDATION_FAILED`, `500 INTERNAL`, `503 U
 ### `GET /healthz`
 
 Operational endpoint. Returns `200` with `{"status":"ok"}` only after migrations and `SELECT 1` succeed; otherwise `503` with shared `UNAVAILABLE` envelope.
+
+## Story design note — Persisted editable greeting
+
+UI mock exports `Greeting` as `{ "text": string }`. Contract matches it exactly for both read and save responses, so backend swap only replaces mock import/client behavior. Mock has no error shape; shared envelope above governs API errors. Frontend keeps client-side empty validation for focus and `Enter a greeting.` message, while backend independently rejects bypassed invalid requests.
