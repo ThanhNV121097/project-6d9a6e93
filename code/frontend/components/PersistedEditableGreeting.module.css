@@ -2,7 +2,7 @@
   display: flex;
   min-height: 100vh;
   width: 100%;
-  max-width: 560px;
+  max-width: calc(var(--space-button-x) * 28);
   margin: var(--space-0) auto;
   padding: var(--space-page);
   flex-direction: column;
@@ -43,8 +43,8 @@
 .input {
   min-width: var(--space-0);
   flex: 1;
-  max-width: 360px;
-  min-height: 48px;
+  max-width: calc(var(--space-button-x) * 18);
+  min-height: calc(var(--space-page) * 2);
   border: var(--border-control) solid var(--color-text);
   border-radius: var(--radius-control);
   background: var(--color-bg);
@@ -55,7 +55,7 @@
 }
 
 .button {
-  min-height: 48px;
+  min-height: calc(var(--space-page) * 2);
   border: var(--border-control) solid var(--color-primary-action);
   border-radius: var(--radius-control);
   background: var(--color-primary-action);
