@@ -107,10 +107,7 @@ func getGreeting(ctx context.Context, pool *pgxpool.Pool) (string, error) {
 
 func saveGreeting(ctx context.Context, pool *pgxpool.Pool, text string) (string, error) {
 	var saved string
-	err := pool.QueryRow(ctx, `UPDATE greetings SET text = $1, updated_at = now() WHERE id = true RETURNING text`, text).Scan(&saved)
-	if errors.Is(err, pgx.ErrNoRows) {
-		err = pool.QueryRow(ctx, `INSERT INTO greetings (id, text, updated_at) VALUES (true, $1, now()) RETURNING text`, text).Scan(&saved)
-	}
+	err := pool.QueryRow(ctx, `INSERT INTO greetings (id, text, updated_at) VALUES (true, $1, now()) ON CONFLICT (id) DO UPDATE SET text = EXCLUDED.text, updated_at = now() RETURNING text`, text).Scan(&saved)
 	return saved, err
 }
 
