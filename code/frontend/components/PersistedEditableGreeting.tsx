@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import type { Greeting } from "../lib/mock/persisted-editable-greeting";
+import { saveGreeting, type Greeting } from "../lib/persisted-editable-greeting";
 import styles from "./PersistedEditableGreeting.module.css";
 
 type PersistedEditableGreetingProps = {
@@ -16,7 +16,7 @@ export function PersistedEditableGreeting({
   const [message, setMessage] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextGreeting = inputValue.trim();
@@ -27,9 +27,14 @@ export function PersistedEditableGreeting({
       return;
     }
 
-    setGreeting(nextGreeting);
-    setInputValue(nextGreeting);
-    setMessage("Saved.");
+    try {
+      const savedGreeting = await saveGreeting(nextGreeting);
+      setGreeting(savedGreeting.text);
+      setInputValue(savedGreeting.text);
+      setMessage("Saved.");
+    } catch {
+      setMessage("");
+    }
   }
 
   return (
