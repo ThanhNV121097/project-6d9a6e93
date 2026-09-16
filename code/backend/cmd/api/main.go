@@ -94,5 +94,3 @@ func migrate(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-var _ = errors.New
-var _ = fmt.Sprintf
